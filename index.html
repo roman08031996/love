@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Galería Corazón</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== ENCABEZADO ===== -->
+  <header class="header">
+    <h1 class="header__title">
+      <span class="heart-icon">&#10084;</span> Galería Corazón
+    </h1>
+    <p class="header__subtitle">Tus recuerdos, con amor</p>
+  </header>
+
+  <!-- ===== ZONA DE CARGA ===== -->
+  <section class="upload-section">
+
+    <!-- Zona de drag & drop -->
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone__icon">&#10084;</div>
+      <p class="drop-zone__text">Arrastrá tus fotos aquí</p>
+      <p class="drop-zone__sub">o hacé clic para seleccionar</p>
+      <input
+        type="file"
+        id="fileInput"
+        accept="image/*"
+        multiple
+        class="drop-zone__input"
+      />
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="actions">
+      <button class="btn btn--primary" id="btnSelect">
+        &#128247; Seleccionar fotos
+      </button>
+      <button class="btn btn--danger" id="btnClear">
+        &#128465; Limpiar galería
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ===== GALERÍA EN FORMA DE CORAZÓN ===== -->
+  <section class="gallery-section">
+
+    <!-- Mensaje vacío -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-state__icon">&#10084;</div>
+      <p>Todavía no hay fotos.</p>
+      <p class="empty-state__sub">¡Subí tus recuerdos y llenà este corazón!</p>
+    </div>
+
+    <!-- Paginación (se muestra solo si hay más de una página) -->
+    <div class="pagination" id="paginationWrap" style="display:none">
+      <button class="btn btn--nav" id="btnPrev">&#8592; Anterior</button>
+      <span class="page-label" id="pageLabel"></span>
+      <button class="btn btn--nav" id="btnNext">Siguiente &#8594;</button>
+    </div>
+
+    <!-- Canvas donde se pinta el collage en forma de corazón -->
+    <div class="heart-wrapper" id="heartWrapper" style="display:none">
+      <canvas id="heartCanvas"></canvas>
+      <!-- Capa de interacción transparente sobre el canvas para clicks/hover -->
+      <div class="heart-overlay" id="heartOverlay"></div>
+    </div>
+
+  </section>
+
+  <!-- ===== MODAL / LIGHTBOX ===== -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Vista ampliada">
+    <div class="modal__overlay" id="modalOverlay"></div>
+    <div class="modal__content">
+      <button class="modal__close" id="modalClose" aria-label="Cerrar">&times;</button>
+      <img class="modal__img" id="modalImg" src="" alt="Imagen ampliada" />
+      <div class="modal__actions">
+        <button class="modal__del" id="modalDel" title="Eliminar foto">&#128465; Eliminar esta foto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPRODUCTOR DE MÚSICA FLOTANTE ===== -->
+  <div class="music-player" id="musicPlayer">
+    <audio id="bgAudio" preload="auto"></audio>
+
+    <!-- Cabecera del player: notas + toggle playlist -->
+    <div class="mp-header">
+      <div class="music-player__notes" id="musicNotes">
+        <span class="note n1">&#9834;</span>
+        <span class="note n2">&#9835;</span>
+        <span class="note n3">&#9834;</span>
+      </div>
+      <button class="mp-btn mp-btn--list" id="btnToggleList" title="Ver lista de canciones">&#9776;</button>
+    </div>
+
+    <!-- Info canción actual -->
+    <div class="music-player__info">
+      <span class="music-player__song" id="songTitle">Sin canciones</span>
+      <span class="music-player__status" id="musicStatus">&#9654; Listo</span>
+    </div>
+
+    <!-- Barra de progreso de la canción -->
+    <div class="mp-progress-wrap">
+      <span class="mp-time" id="timeElapsed">0:00</span>
+      <input type="range" id="seekBar" class="mp-seek" min="0" max="100" value="0" step="1" title="Posición" />
+      <span class="mp-time" id="timeDuration">0:00</span>
+    </div>
+
+    <!-- Controles de reproducción -->
+    <div class="mp-controls-row">
+      <button class="mp-btn" id="btnPrevSong" title="Anterior">&#9664;&#9664;</button>
+      <button class="mp-btn mp-btn--play" id="btnPlayPause" title="Play / Pause">&#9654;</button>
+      <button class="mp-btn" id="btnNextSong" title="Siguiente">&#9654;&#9654;</button>
+      <input type="range" class="music-player__volume" id="volumeSlider"
+             min="0" max="100" value="60" step="1" title="Volumen" />
+      <button class="mp-btn" id="btnMute" title="Silenciar / Activar">
+        <span id="muteIcon">&#128266;</span>
+      </button>
+    </div>
+
+    <!-- Panel de lista de canciones (oculto por defecto) -->
+    <div class="mp-playlist" id="mpPlaylist" style="display:none">
+      <div class="mp-playlist__header">
+        <span>Lista de canciones</span>
+        <!-- Botón agregar MP3 -->
+        <label class="mp-btn mp-btn--add" title="Agregar canciones MP3">
+          &#43; Agregar MP3
+          <input type="file" id="mp3Input" accept="audio/mpeg,audio/mp3,.mp3" multiple style="display:none" />
+        </label>
+      </div>
+      <ul class="mp-playlist__list" id="playlistItems">
+        <!-- ítems generados por JS -->
+      </ul>
+      <p class="mp-playlist__empty" id="playlistEmpty">Todavía no hay canciones.<br/>Agregá MP3 con el botón de arriba.</p>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+  (function () {
+
+    // ── Estado ──────────────────────────────────────────────
+    var playlist    = [];   // [{ name, url, objectURL }]
+    var currentIdx  = 0;
+    var isMuted     = false;
+    var isPlaying   = false;
+    var seekDragging= false;
+
+    // ── Elementos ────────────────────────────────────────────
+    var audio          = document.getElementById('bgAudio');
+    var btnPlayPause   = document.getElementById('btnPlayPause');
+    var btnPrevSong    = document.getElementById('btnPrevSong');
+    var btnNextSong    = document.getElementById('btnNextSong');
+    var btnMute        = document.getElementById('btnMute');
+    var btnToggleList  = document.getElementById('btnToggleList');
+    var muteIcon       = document.getElementById('muteIcon');
+    var volSlider      = document.getElementById('volumeSlider');
+    var seekBar        = document.getElementById('seekBar');
+    var songTitle      = document.getElementById('songTitle');
+    var musicStatus    = document.getElementById('musicStatus');
+    var timeElapsed    = document.getElementById('timeElapsed');
+    var timeDuration   = document.getElementById('timeDuration');
+    var mpPlaylist     = document.getElementById('mpPlaylist');
+    var playlistItems  = document.getElementById('playlistItems');
+    var playlistEmpty  = document.getElementById('playlistEmpty');
+    var mp3Input       = document.getElementById('mp3Input');
+    var noteEls        = document.querySelectorAll('.note');
+
+    audio.volume = parseInt(volSlider.value) / 100;
+
+    // ── Helpers ──────────────────────────────────────────────
+    function fmtTime(sec) {
+      if (isNaN(sec)) return '0:00';
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function cleanName(filename) {
+      return filename.replace(/\.mp3$/i, '').replace(/[-_]/g, ' ');
+    }
+
+    function setNotes(playing) {
+      noteEls.forEach(function (n) {
+        n.style.animationPlayState = playing ? 'running' : 'paused';
+      });
+    }
+
+    // ── Cargar canción por índice ─────────────────────────────
+    function loadTrack(idx, autoplay) {
+      if (!playlist.length) return;
+      currentIdx = (idx + playlist.length) % playlist.length;
+      var track  = playlist[currentIdx];
+
+      audio.src = track.url;
+      songTitle.textContent = track.name;
+      seekBar.value = 0;
+      timeElapsed.textContent  = '0:00';
+      timeDuration.textContent = '0:00';
+      renderPlaylist();
+
+      if (autoplay) {
+        var p = audio.play();
+        if (p) p.catch(function(){});
+      }
+    }
+
+    // ── Play / Pause ─────────────────────────────────────────
+    function togglePlay() {
+      if (!playlist.length) return;
+      if (audio.paused) {
+        if (!audio.src || audio.src === window.location.href) loadTrack(currentIdx, true);
+        else { var p = audio.play(); if (p) p.catch(function(){}); }
+      } else {
+        audio.pause();
+      }
+    }
+
+    btnPlayPause.addEventListener('click', togglePlay);
+    btnPrevSong.addEventListener('click',  function () { loadTrack(currentIdx - 1, isPlaying); });
+    btnNextSong.addEventListener('click',  function () { loadTrack(currentIdx + 1, isPlaying); });
+
+    // Avanzar automáticamente al terminar la canción
+    audio.addEventListener('ended', function () { loadTrack(currentIdx + 1, true); });
+
+    // ── Estado play/pause visual ──────────────────────────────
+    audio.addEventListener('play', function () {
+      isPlaying = true;
+      btnPlayPause.innerHTML = '&#9646;&#9646;';
+      musicStatus.textContent = '\u25B6 Reproduciendo';
+      setNotes(true);
+    });
+    audio.addEventListener('pause', function () {
+      isPlaying = false;
+      btnPlayPause.innerHTML = '&#9654;';
+      musicStatus.textContent = '\u23F8 Pausado';
+      setNotes(false);
+    });
+
+    // ── Barra de progreso ─────────────────────────────────────
+    audio.addEventListener('timeupdate', function () {
+      if (seekDragging || !audio.duration) return;
+      seekBar.value = Math.round((audio.currentTime / audio.duration) * 100);
+      timeElapsed.textContent = fmtTime(audio.currentTime);
+    });
+    audio.addEventListener('durationchange', function () {
+      timeDuration.textContent = fmtTime(audio.duration);
+    });
+    seekBar.addEventListener('mousedown', function () { seekDragging = true; });
+    seekBar.addEventListener('touchstart', function () { seekDragging = true; });
+    seekBar.addEventListener('input', function () {
+      if (audio.duration) {
+        timeElapsed.textContent = fmtTime((seekBar.value / 100) * audio.duration);
+      }
+    });
+    seekBar.addEventListener('change', function () {
+      seekDragging = false;
+      if (audio.duration) audio.currentTime = (seekBar.value / 100) * audio.duration;
+    });
+
+    // ── Volumen y mute ────────────────────────────────────────
+    btnMute.addEventListener('click', function () {
+      isMuted = !isMuted;
+      audio.muted = isMuted;
+      muteIcon.textContent = isMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
+      btnMute.classList.toggle('muted', isMuted);
+      noteEls.forEach(function (n) { n.style.opacity = isMuted ? '0.2' : '1'; });
+    });
+    volSlider.addEventListener('input', function () {
+      var vol = parseInt(volSlider.value) / 100;
+      audio.volume = vol;
+      if (vol === 0) {
+        isMuted = true; audio.muted = true;
+        muteIcon.textContent = '\uD83D\uDD07';
+        btnMute.classList.add('muted');
+        noteEls.forEach(function (n) { n.style.opacity = '0.2'; });
+      } else {
+        if (isMuted) { audio.muted = false; isMuted = false; }
+        muteIcon.textContent = '\uD83D\uDD0A';
+        btnMute.classList.remove('muted');
+        noteEls.forEach(function (n) { n.style.opacity = '1'; });
+      }
+    });
+
+    // ── Toggle lista ──────────────────────────────────────────
+    btnToggleList.addEventListener('click', function () {
+      var open = mpPlaylist.style.display === 'none';
+      mpPlaylist.style.display = open ? 'flex' : 'none';
+      btnToggleList.classList.toggle('active', open);
+    });
+
+    // ── Cargar MP3 desde archivo ──────────────────────────────
+    mp3Input.addEventListener('change', function () {
+      var files = Array.from(mp3Input.files);
+      files.forEach(function (file) {
+        // Revocar URL anterior si existía para el mismo nombre
+        var exists = playlist.find(function(t){ return t.name === cleanName(file.name); });
+        if (exists) return; // No duplicar
+
+        var objectURL = URL.createObjectURL(file);
+        playlist.push({ name: cleanName(file.name), url: objectURL });
+      });
+      mp3Input.value = '';
+      renderPlaylist();
+
+      // Si no había nada reproduciéndose, cargar la primera nueva
+      if (playlist.length === files.length) {
+        loadTrack(0, false);
+        // Intentar autoplay tras primer gesto del usuario
+        var p = audio.play();
+        if (p) p.catch(function(){});
+      }
+    });
+
+    // ── Cargar spanish-girl.mp3 incluido ─────────────────────
+    playlist.push({ name: 'Spanish Girl', url: 'spanish-girl.mp3' });
+    loadTrack(0, false);
+    // Autoplay suave (el browser puede bloquearlo hasta el primer click)
+    var firstPlay = audio.play();
+    if (firstPlay) {
+      firstPlay.catch(function () {
+        musicStatus.textContent = '\uD83D\uDC4B Hacé clic para escuchar';
+        document.addEventListener('click', function startOnClick() {
+          audio.play();
+          document.removeEventListener('click', startOnClick);
+        }, { once: true });
+      });
+    }
+
+    // ── Renderizar lista ──────────────────────────────────────
+    function renderPlaylist() {
+      playlistItems.innerHTML = '';
+      playlistEmpty.style.display = playlist.length ? 'none' : 'block';
+
+      playlist.forEach(function (track, idx) {
+        var li = document.createElement('li');
+        li.className = 'mp-playlist__item' + (idx === currentIdx ? ' active' : '');
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'mp-playlist__name';
+        nameSpan.textContent = (idx === currentIdx ? '\u25B6 ' : '') + track.name;
+        nameSpan.addEventListener('click', function () { loadTrack(idx, true); });
+
+        var delBtn = document.createElement('button');
+        delBtn.className = 'mp-playlist__del';
+        delBtn.innerHTML = '&times;';
+        delBtn.title = 'Quitar de la lista';
+        delBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          removeTrack(idx);
+        });
+
+        li.appendChild(nameSpan);
+        li.appendChild(delBtn);
+        playlistItems.appendChild(li);
+      });
+    }
+
+    // ── Eliminar canción de la lista ──────────────────────────
+    function removeTrack(idx) {
+      var wasPlaying = isPlaying;
+      var track = playlist[idx];
+      // Revocar object URL si fue cargada por el usuario
+      if (track.url.startsWith('blob:')) URL.revokeObjectURL(track.url);
+      playlist.splice(idx, 1);
+
+      if (!playlist.length) {
+        audio.pause(); audio.src = '';
+        songTitle.textContent = 'Sin canciones';
+        musicStatus.textContent = '\u25B6 Listo';
+        setNotes(false);
+        btnPlayPause.innerHTML = '&#9654;';
+        renderPlaylist();
+        return;
+      }
+      // Ajustar índice actual
+      if (idx < currentIdx) currentIdx--;
+      else if (idx === currentIdx) currentIdx = currentIdx % playlist.length;
+      loadTrack(currentIdx, wasPlaying);
+    }
+
+    renderPlaylist();
+
+  })();
+  </script>
+
+</body>
+</html>
