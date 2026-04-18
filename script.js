@@ -568,7 +568,7 @@ window.addEventListener('resize', () => {
 // ─────────────────────────────────────────────
 (async () => {
   // Verificar configuración
-  if (CONFIG.CLOUDINARY_CLOUD_NAME === 'dx3musvxg') {
+  if (CONFIG.CLOUDINARY_CLOUD_NAME === 'TU_CLOUD_NAME') {
     showToast('⚠ Completá las credenciales en script.js — seguí SETUP.md');
   }
   await refreshGallery(false);
